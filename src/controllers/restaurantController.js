@@ -4,10 +4,18 @@ import pool from "../config/db.js";
 export const getRestaurants = async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM restaurants");
-    res.json(result.rows);
+
+    res.json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows,
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error fetching restaurants");
+    res.status(500).json({
+      success: false,
+      message: "Error fetching restaurants",
+    });
   }
 };
 
@@ -17,13 +25,26 @@ export const getMenuByRestaurant = async (req, res) => {
 
   try {
     const result = await pool.query(
-      "SELECT * FROM menu_items WHERE restaurant_id = $1",
+      "SELECT id, name, price, category FROM menu_items WHERE restaurant_id = $1",
       [id]
     );
 
-    res.json(result.rows);
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No menu items found",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.rows,
+    });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error fetching menu");
+    res.status(500).json({
+      success: false,
+      message: "Error fetching menu",
+    });
   }
 };

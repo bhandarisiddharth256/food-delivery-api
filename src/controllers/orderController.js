@@ -6,6 +6,14 @@ export const createOrder = async (req, res) => {
   try {
     const { user_id, restaurant_id, items, total_amount } = req.body;
 
+    // ✅ Basic validation
+    if (!user_id || !restaurant_id || !items || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid order data",
+      });
+    }
+
     await client.query("BEGIN");
 
     const orderResult = await client.query(
@@ -27,12 +35,43 @@ export const createOrder = async (req, res) => {
 
     await client.query("COMMIT");
 
-    res.json({ message: "Order placed", orderId });
+    res.status(201).json({
+      success: true,
+      message: "Order placed successfully",
+      orderId,
+    });
+
   } catch (err) {
     await client.query("ROLLBACK");
     console.error(err);
-    res.status(500).send("Order failed");
+
+    res.status(500).json({
+      success: false,
+      message: "Order failed",
+    });
   } finally {
     client.release();
+  }
+};
+
+export const getUserOrders = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const result = await pool.query(
+      `SELECT o.id, o.total_amount, o.status, r.name AS restaurant_name
+       FROM orders o
+       JOIN restaurants r ON o.restaurant_id = r.id
+       WHERE o.user_id = $1`,
+      [userId]
+    );
+
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching orders");
   }
 };
